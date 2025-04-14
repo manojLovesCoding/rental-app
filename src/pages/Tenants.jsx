@@ -1,6 +1,7 @@
-import { useState, useEffect, useContext } from "react";
+import { useState, useEffect, useContext, useMemo } from "react";
 import Sidebar from "../components/Sidebar";
 import { PropertyContext } from "../context/PropertyContext";
+import defaultAvatar from "../assets/default-avatar.png";
 
 export default function TenantsPage() {
   const { properties } = useContext(PropertyContext);
@@ -9,6 +10,7 @@ export default function TenantsPage() {
   const [selectedTenant, setSelectedTenant] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [isLoading, setIsLoading] = useState(true);
+  const [avatarPreview, setAvatarPreview] = useState(null);
 
   // Load tenants from localStorage on component mount
   useEffect(() => {
@@ -31,7 +33,8 @@ export default function TenantsPage() {
               leaseBegin: "2024-01-01",
               leaseEnd: "2024-12-31",
               phone: "555-0101",
-              status: "active"
+              status: "active",
+              avatar: defaultAvatar
             },
             {
               id: 2,
@@ -44,7 +47,8 @@ export default function TenantsPage() {
               leaseBegin: "2024-03-01",
               leaseEnd: "2025-02-28",
               phone: "555-0102",
-              status: "active"
+              status: "active",
+              avatar: defaultAvatar
             }
           ];
           setTenants(sampleTenants);
@@ -72,17 +76,24 @@ export default function TenantsPage() {
       ...newTenant,
       id: Date.now(),
       status: "active",
-      phone: newTenant.phone || "N/A"
+      phone: newTenant.phone || "N/A",
+      avatar: avatarPreview || defaultAvatar
     };
     setTenants((prev) => [...prev, tenantWithId]);
     setIsModalOpen(false);
+    setAvatarPreview(null);
   };
 
   const handleEditTenant = (updatedTenant) => {
     setTenants((prev) =>
-      prev.map((t) => (t.id === updatedTenant.id ? updatedTenant : t))
+      prev.map((t) =>
+        t.id === updatedTenant.id
+          ? { ...updatedTenant, avatar: avatarPreview || t.avatar }
+          : t
+      )
     );
     setSelectedTenant(null);
+    setAvatarPreview(null);
   };
 
   const handleDeleteTenant = (tenantId) => {
@@ -92,23 +103,51 @@ export default function TenantsPage() {
   };
 
   const handleStatusChange = (tenantId, newStatus) => {
-    setTenants((prev) =>
-      prev.map((t) => (t.id === tenantId ? { ...t, status: newStatus } : t))
-    );
+    if (
+      window.confirm(
+        `Are you sure you want to change this tenant's status to ${newStatus}?`
+      )
+    ) {
+      setTenants((prev) =>
+        prev.map((t) => (t.id === tenantId ? { ...t, status: newStatus } : t))
+      );
+    }
   };
 
-  const filteredTenants = tenants.filter((tenant) => {
+  const handleAvatarChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setAvatarPreview(reader.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const filteredTenants = useMemo(() => {
     const searchLower = searchTerm.toLowerCase();
-    return (
-      `${tenant.firstName} ${tenant.lastName}`
-        .toLowerCase()
-        .includes(searchLower) ||
-      tenant.email.toLowerCase().includes(searchLower) ||
-      tenant.phone.toLowerCase().includes(searchLower) ||
-      tenant.rentDue.toLowerCase().includes(searchLower) ||
-      tenant.status.toLowerCase().includes(searchLower)
-    );
-  });
+    return tenants.filter((tenant) => {
+      return (
+        `${tenant.firstName} ${tenant.lastName}`
+          .toLowerCase()
+          .includes(searchLower) ||
+        tenant.email.toLowerCase().includes(searchLower) ||
+        tenant.phone.toLowerCase().includes(searchLower) ||
+        tenant.rentDue.toLowerCase().includes(searchLower) ||
+        tenant.status.toLowerCase().includes(searchLower)
+      );
+    });
+  }, [tenants, searchTerm]);
+
+  const formatCurrency = (amount) => {
+    if (!amount) return "";
+    if (typeof amount === "string" && amount.startsWith("$")) return amount;
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD"
+    }).format(amount);
+  };
 
   const TenantModal = ({ tenant, onClose, onSubmit }) => {
     const [formData, setFormData] = useState(
@@ -122,15 +161,19 @@ export default function TenantsPage() {
         unitId: "",
         leaseBegin: "",
         leaseEnd: "",
-        status: "active"
+        status: "active",
+        avatar: defaultAvatar
       }
     );
 
     const [errors, setErrors] = useState({});
 
-    const availableUnits =
-      properties.find((p) => p.id.toString() === formData.propertyId)?.units ||
-      [];
+    const availableUnits = useMemo(() => {
+      const property = properties.find(
+        (p) => p.id.toString() === formData.propertyId
+      );
+      return property?.units || [];
+    }, [formData.propertyId, properties]);
 
     const validateForm = () => {
       const newErrors = {};
@@ -149,11 +192,29 @@ export default function TenantsPage() {
 
     const handleChange = (e) => {
       const { name, value } = e.target;
-      setFormData((prev) => ({
-        ...prev,
-        [name]: value,
-        ...(name === "propertyId" && { unitId: "" }) // Reset unit when property changes
-      }));
+
+      const newFormData = {
+        ...formData,
+        [name]: value
+      };
+
+      // If property changes, reset unit and rent
+      if (name === "propertyId") {
+        newFormData.unitId = "";
+        newFormData.rentDue = "";
+      }
+
+      // If unit changes, auto-fill rent
+      if (name === "unitId" && value) {
+        const selectedUnit = availableUnits.find(
+          (unit) => unit.id.toString() === value
+        );
+        if (selectedUnit) {
+          newFormData.rentDue = formatCurrency(selectedUnit.rent);
+        }
+      }
+
+      setFormData(newFormData);
     };
 
     const handleSubmit = (e) => {
@@ -171,6 +232,29 @@ export default function TenantsPage() {
           </h2>
           <form onSubmit={handleSubmit}>
             <div className="space-y-4">
+              <div className="flex flex-col items-center">
+                <div className="relative w-24 h-24 mb-4">
+                  <img
+                    src={avatarPreview || formData.avatar}
+                    alt="Tenant avatar"
+                    className="w-full h-full rounded-full object-cover border-2 border-gray-200"
+                    onError={(e) => {
+                      e.target.onerror = null;
+                      e.target.src = defaultAvatar;
+                    }}
+                  />
+                </div>
+                <label className="cursor-pointer bg-gray-100 hover:bg-gray-200 text-gray-800 py-1 px-3 rounded text-sm">
+                  Upload Photo
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleAvatarChange}
+                  />
+                </label>
+              </div>
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   First Name *
@@ -237,24 +321,7 @@ export default function TenantsPage() {
                   placeholder="555-123-4567"
                 />
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Rent Due *
-                </label>
-                <input
-                  type="text"
-                  name="rentDue"
-                  className={`w-full p-2 border rounded ${
-                    errors.rentDue ? "border-red-500" : ""
-                  }`}
-                  value={formData.rentDue}
-                  onChange={handleChange}
-                  placeholder="$1200"
-                />
-                {errors.rentDue && (
-                  <p className="text-red-500 text-xs mt-1">{errors.rentDue}</p>
-                )}
-              </div>
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Property *
@@ -296,12 +363,41 @@ export default function TenantsPage() {
                   <option value="">Select Unit</option>
                   {availableUnits.map((unit) => (
                     <option key={unit.id} value={unit.id}>
-                      {unit.number} (${unit.rent})
+                      {unit.number}
                     </option>
                   ))}
                 </select>
                 {errors.unitId && (
                   <p className="text-red-500 text-xs mt-1">{errors.unitId}</p>
+                )}
+              </div>
+
+              <div className="relative">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Rent Due *
+                </label>
+                <input
+                  type="text"
+                  name="rentDue"
+                  className={`w-full p-2 border rounded ${
+                    errors.rentDue ? "border-red-500" : ""
+                  }`}
+                  value={formData.rentDue}
+                  onChange={handleChange}
+                  placeholder="$1200"
+                  readOnly={!!formData.unitId}
+                />
+                {formData.unitId && (
+                  <button
+                    type="button"
+                    className="absolute right-2 top-8 text-gray-500 hover:text-gray-700"
+                    onClick={() => setFormData({ ...formData, rentDue: "" })}
+                  >
+                    ✕
+                  </button>
+                )}
+                {errors.rentDue && (
+                  <p className="text-red-500 text-xs mt-1">{errors.rentDue}</p>
                 )}
               </div>
               <div className="grid grid-cols-2 gap-4">
@@ -411,16 +507,16 @@ export default function TenantsPage() {
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Tenant
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden md:table-cell">
-                  Contact
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Property/Unit
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Tenant
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Rent
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Contact
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden md:table-cell">
                   Lease Period
@@ -446,27 +542,6 @@ export default function TenantsPage() {
                   return (
                     <tr key={tenant.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          <div className="flex-shrink-0 h-10 w-10 rounded-full bg-gray-300 flex items-center justify-center">
-                            <span className="text-gray-600">
-                              {tenant.firstName.charAt(0)}
-                              {tenant.lastName.charAt(0)}
-                            </span>
-                          </div>
-                          <div className="ml-4">
-                            <div className="font-medium">
-                              {tenant.firstName} {tenant.lastName}
-                            </div>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap hidden md:table-cell">
-                        <div className="text-gray-600">{tenant.email}</div>
-                        <div className="text-sm text-gray-500">
-                          {tenant.phone}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
                         <div>
                           <div className="font-medium">
                             {property?.name || "N/A"}
@@ -477,7 +552,35 @@ export default function TenantsPage() {
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center">
+                          <div className="flex-shrink-0 h-10 w-10">
+                            <img
+                              className="h-10 w-10 rounded-full object-cover"
+                              src={tenant.avatar || defaultAvatar}
+                              alt={`${tenant.firstName} ${tenant.lastName}`}
+                              onError={(e) => {
+                                e.target.onerror = null;
+                                e.target.src = defaultAvatar;
+                              }}
+                            />
+                          </div>
+                          <div className="ml-4">
+                            <div className="font-medium">
+                              {tenant.firstName} {tenant.lastName}
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-gray-600">{tenant.rentDue}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-gray-600">
+                          <div>{tenant.email}</div>
+                          <div className="text-sm text-gray-500">
+                            {tenant.phone}
+                          </div>
+                        </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap hidden md:table-cell">
                         <div>
@@ -505,7 +608,11 @@ export default function TenantsPage() {
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <div className="flex space-x-2">
                           <button
-                            onClick={() => setSelectedTenant(tenant)}
+                            onClick={() => {
+                              setSelectedTenant(tenant);
+                              setAvatarPreview(null);
+                              setIsModalOpen(true);
+                            }}
                             className="text-blue-600 hover:text-blue-900"
                           >
                             Edit
@@ -538,7 +645,7 @@ export default function TenantsPage() {
               ) : (
                 <tr>
                   <td
-                    colSpan="7"
+                    colSpan="8"
                     className="px-6 py-4 text-center text-gray-500"
                   >
                     {searchTerm
@@ -558,6 +665,7 @@ export default function TenantsPage() {
           onClose={() => {
             setIsModalOpen(false);
             setSelectedTenant(null);
+            setAvatarPreview(null);
           }}
           onSubmit={selectedTenant ? handleEditTenant : handleAddTenant}
         />
