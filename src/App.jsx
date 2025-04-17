@@ -5,13 +5,14 @@ import Payment from "./pages/Payment.jsx";
 import Reports from "./pages/Reports.jsx";
 import Settings from "./pages/Settings.jsx";
 import Properties from "./pages/Properties.jsx";
-import Tenants from "./pages/Tenants.jsx";
 import Notifications from "./pages/Notifications.jsx";
 import Support from "./pages/Support.jsx";
 import Login from "./pages/Login.jsx";
 import Register from "./pages/Register.jsx";
 import Navbar from "./components/Navbar.jsx";
 import Footer from "./components/Footer.jsx";
+import TenantsPage from "./pages/Tenants.jsx";
+import NotificationsPage from "./pages/Notifications.jsx";
 
 function App() {
   return (
@@ -31,8 +32,11 @@ function App() {
           <Route path="/dashboard/reports" element={<Reports />} />
           <Route path="/dashboard/settings" element={<Settings />} />
           <Route path="/dashboard/properties" element={<Properties />} />
-          <Route path="/dashboard/tenants" element={<Tenants />} />
-          <Route path="/dashboard/notifications" element={<Notifications />} />
+          <Route path="/dashboard/tenants" element={<TenantsPage />} />
+          <Route
+            path="/dashboard/notifications"
+            element={<NotificationsPage />}
+          />
           <Route path="/dashboard/support" element={<Support />} />
         </Routes>
       </div>

@@ -5,7 +5,7 @@ import LandlordDashboard from "./LandlordDashboard";
 
 function Dashboard() {
   // Assume userType comes from authentication (tenant or landlord)
-  const [userType] = useState("landlord"); // Change to "landlord" for testing
+  const [userType] = useState("tenant"); // Change to "landlord" for testing
 
   if (userType === "tenant") {
     return <TenantDashboard />;
