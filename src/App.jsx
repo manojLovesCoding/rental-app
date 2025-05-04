@@ -1,50 +1,66 @@
-import { Routes, Route } from "react-router-dom";
-import Home from "./pages/Home.jsx";
-import Dashboard from "./pages/Dashboard.jsx";
-import Payment from "./pages/Payment.jsx";
-import Reports from "./pages/Reports.jsx";
-import Settings from "./pages/Settings.jsx";
-import Properties from "./pages/Properties.jsx";
-import Notifications from "./pages/Notifications.jsx";
-import Support from "./pages/Support.jsx";
-import Login from "./pages/Login.jsx";
-import Register from "./pages/Register.jsx";
-import Navbar from "./components/Navbar.jsx";
-import Footer from "./components/Footer.jsx";
-import TenantsPage from "./pages/Tenants.jsx";
-import NotificationsPage from "./pages/Notifications.jsx";
+import React, { useState } from "react";
+import { Route, Routes, useLocation } from "react-router-dom";
+import { Toaster } from "react-hot-toast";
+import { MenuIcon } from "lucide-react";
+import LandlordDashboard from "./components/LandlordDashboard";
+import Sidebar from "./components/Sidebar";
+import Properties from "./pages/Properties";
+import ManageUnits from "./pages/ManageUnits";
+import Tenants from "./pages/Tenants";
+import Payments from "./pages/Payments";
+import Reminders from "./pages/Reminders";
+import LandingPage from "./pages/LandingPage";
 
-function App() {
+const App = () => {
+  const [isSidebarOpen, setSidebarOpen] = useState(false);
+  const location = useLocation();
+  const isLandingPage = location.pathname === "/";
+
   return (
-    <div className="flex flex-col h-screen">
-      {/* Navbar is always visible */}
-      <Navbar />
-
-      <div className="flex-1">
+    <div className="min-h-screen bg-gray-50 text-default">
+      {isLandingPage ? (
         <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-
-          {/* Dashboard Routes */}
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/dashboard/payment" element={<Payment />} />
-          <Route path="/dashboard/reports" element={<Reports />} />
-          <Route path="/dashboard/settings" element={<Settings />} />
-          <Route path="/dashboard/properties" element={<Properties />} />
-          <Route path="/dashboard/tenants" element={<TenantsPage />} />
-          <Route
-            path="/dashboard/notifications"
-            element={<NotificationsPage />}
-          />
-          <Route path="/dashboard/support" element={<Support />} />
+          <Route path="/" element={<LandingPage />} />
         </Routes>
-      </div>
+      ) : (
+        <div className="flex">
+          {/* Sidebar */}
+          <Sidebar
+            isOpen={isSidebarOpen}
+            onClose={() => setSidebarOpen(false)}
+          />
 
-      {/* Footer is always visible */}
-      <Footer />
+          {/* Main content */}
+          <div className="flex-1 md:ml-64">
+            {/* Top navbar (mobile) */}
+            <div className="md:hidden flex items-center justify-between p-4 bg-white shadow sticky top-0 z-30">
+              <button onClick={() => setSidebarOpen(true)}>
+                <MenuIcon size={24} className="text-gray-700" />
+              </button>
+              <h1 className="text-lg font-semibold text-blue-600">
+                RentManage
+              </h1>
+            </div>
+
+            <main className="p-4">
+              <Toaster position="top-center" reverseOrder={false} />
+              <Routes>
+                <Route path="/dashboard" element={<LandlordDashboard />} />
+                <Route path="/properties" element={<Properties />} />
+                <Route
+                  path="/manage-units/:propertyId"
+                  element={<ManageUnits />}
+                />
+                <Route path="/tenants" element={<Tenants />} />
+                <Route path="/payments" element={<Payments />} />
+                <Route path="/reminders" element={<Reminders />} />
+              </Routes>
+            </main>
+          </div>
+        </div>
+      )}
     </div>
   );
-}
+};
 
 export default App;
