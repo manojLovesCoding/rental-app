@@ -8,16 +8,18 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  useSidebar,
+  useSidebar
 } from "./ui/sidebar";
 import {
+  LayoutGrid,
   Building,
+  Users,
   FileText,
   Heart,
   Home,
   Menu,
   Settings,
-  X,
+  X
 } from "lucide-react";
 import { NAVBAR_HEIGHT } from "@/lib/constants";
 import { cn } from "@/lib/utils";
@@ -30,23 +32,26 @@ const AppSidebar = ({ userType }: AppSidebarProps) => {
   const navLinks =
     userType === "manager"
       ? [
+          { icon: LayoutGrid, label: "Dashboard", href: "/managers/dashboard" },
           { icon: Building, label: "Properties", href: "/managers/properties" },
+          { icon: Users, label: "Tenants", href: "/managers/tenants" },
           {
             icon: FileText,
             label: "Applications",
-            href: "/managers/applications",
+            href: "/managers/applications"
           },
-          { icon: Settings, label: "Settings", href: "/managers/settings" },
+          { icon: Settings, label: "Settings", href: "/managers/settings" }
         ]
       : [
+          { icon: LayoutGrid, label: "Dashboard", href: "/tenants/dashboard" },
           { icon: Heart, label: "Favorites", href: "/tenants/favorites" },
           {
             icon: FileText,
             label: "Applications",
-            href: "/tenants/applications",
+            href: "/tenants/applications"
           },
           { icon: Home, label: "Residences", href: "/tenants/residences" },
-          { icon: Settings, label: "Settings", href: "/tenants/settings" },
+          { icon: Settings, label: "Settings", href: "/tenants/settings" }
         ];
 
   return (
@@ -55,7 +60,7 @@ const AppSidebar = ({ userType }: AppSidebarProps) => {
       className="fixed left-0 bg-white shadow-lg"
       style={{
         top: `${NAVBAR_HEIGHT}px`,
-        height: `calc(100vh - ${NAVBAR_HEIGHT}px)`,
+        height: `calc(100vh - ${NAVBAR_HEIGHT}px)`
       }}
     >
       <SidebarHeader>
