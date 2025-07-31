@@ -12,6 +12,7 @@ import {
 } from "@aws-amplify/ui-react";
 import "@aws-amplify/ui-react/styles.css";
 import { useRouter, usePathname } from "next/navigation";
+import { fetchUserAttributes } from "aws-amplify/auth";
 
 // https://docs.amplify.aws/gen1/javascript/tools/libraries/configure-categories/
 Amplify.configure({
@@ -150,10 +151,32 @@ const Auth = ({ children }: { children: React.ReactNode }) => {
 
   // Redirect authenticated users away from auth pages
   useEffect(() => {
+  const redirectUser = async () => {
     if (user && isAuthPage) {
-      router.push("/");
+      try {
+        const attributes = await fetchUserAttributes();
+        console.log("Fetched attributes:", attributes);
+
+        const userRole = attributes["custom:role"];
+
+        if (userRole === "manager") {
+          router.push("/managers/dashboard");
+        } else if (userRole === "tenant") {
+          router.push("/tenants/dashboard");
+        } else {
+          router.push("/");
+        }
+      } catch (error) {
+        console.error("Error fetching attributes", error);
+        router.push("/");
+      }
     }
-  }, [user, isAuthPage, router]);
+  };
+
+  redirectUser();
+}, [user, isAuthPage, router]);
+
+
 
   // Allow access to public pages without authentication
   if (!isAuthPage && !isDashboardPage) {
